@@ -12,6 +12,7 @@ public class TileCamera : MonoBehaviour
     public static Sprite[] SPRITES;
     public static Transform TILE_ANCHOR;
     public static Tile[,] TILES;
+    public static string COLLISIONS;
 
     [Header("Set in Inspector")]
     public TextAsset mapData;
@@ -20,6 +21,7 @@ public class TileCamera : MonoBehaviour
     public Tile tilePrefab;
 
     void Awake() {
+        COLLISIONS = Utils.RemoveLineEndings(mapCollisions.text);
         LoadMap();
     }
 
