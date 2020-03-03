@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Dray : MonoBehaviour, IFacingMover, IKeyMaster
 {
-    public enum eMode {idle, move, attack, transition}
+    public enum eMode {idle, move, attack, transition, knockback}
 
     [Header("Set in Inspector")]
     public float speed = 5f;     // m/s
@@ -12,32 +12,64 @@ public class Dray : MonoBehaviour, IFacingMover, IKeyMaster
     public float attackDelay = 0.5f;    //每次攻击动作之间的间隔
     public float transitionDelay = 0.5f;    //进入不同房间的延迟间隔时间
 
+    public int maxHealth = 10;
+    public float knockbackSpeed = 10;
+    public float knockbackDuration = 0.25f;
+    public float invincibleDuration = 0.5f;
+
     [Header("Set Dynamically")]
     public int dirHeld = -1;    //按住的方向键所指向的方向
     public int facing = 1;    //人物所朝的方向
     public eMode mode = eMode.idle;
 
     public int numKeys = 0;
+    public bool invincible = false;
+    public bool hasGrappler = false;
+    public Vector3 lastSafeLoc;
+    public int lastSafeFacing;
     
     private float timeAtkDone = 0;    // 攻击动作完成的时间
     private float timeAtkNext = 0;    // 下次攻击动作开始的时间
     private float transitionDone = 0;
     private Vector2 transitionPos;
 
+    private float knockbackDone = 0;
+    private float invincibleDone = 0;
+    private Vector3 knockbackVel;
+
     private Rigidbody rigid;
     private Animator anim;
     private InRoom inRm;    //InRoom脚本(组件)
     private Vector3[] directions = new Vector3[] {Vector3.right, Vector3.up, Vector3.left, Vector3.down};
+    private SpriteRenderer sRend;    //用来控制Dray受到伤害和不受到伤害时的身体的颜色
 
+    [SerializeField]
+    private int _health;
+
+    public int health {
+        get{ return _health;}
+        set{ _health = value;}
+    }
 
     void Awake() {
         rigid = GetComponent<Rigidbody>();
         anim = GetComponent<Animator>();
         inRm = GetComponent<InRoom>();    // this will ensure we can asses the InRoom class;
+        sRend = GetComponent<SpriteRenderer>();
+        health = maxHealth;
+        lastSafeLoc = transform.position;
+        lastSafeFacing = facing;
     }
 
     void Update()
     {   
+        if(invincible && Time.time > invincibleDone) invincible = false;
+        sRend.color = invincible ? Color.red: Color.white;
+        if(mode == eMode.knockback) {
+            rigid.velocity = knockbackVel;
+            if(Time.time < knockbackDone) return;    //如果还没到被击退动作的结束时间，则不继续执行下面的语句
+        }
+    
         if(mode == eMode.transition) {
             rigid.velocity = Vector3.zero;
             anim.speed = 0;
@@ -132,10 +164,68 @@ public class Dray : MonoBehaviour, IFacingMover, IKeyMaster
                 roomNum = rm;
                 transitionPos = InRoom.DOORS[(doorNum + 2) % 4];    //从不同门穿隧过去的房间的相对位置
                 roomPos = transitionPos;
+                lastSafeLoc = transform.position;
+                lastSafeFacing = facing;
                 mode = eMode.transition;
                 transitionDone = Time.time + transitionDelay;
             }
         }
+    }
+
+    void OnCollisionEnter(Collision coll) {
+        if(invincible) return;
+        DamageEffect dEf = coll.gameObject.GetComponent<DamageEffect>();    //获取碰撞到的对象coll的组件DamageEffect
+        if(dEf == null) return;    //如果碰撞到的对象没有DamageEffect组件，说明该对象不会产生影响
+
+        health -= dEf.damage;
+        invincible = true;
+        invincibleDone = Time.time + invincibleDuration;
+        
+        if(dEf.knockback) {
+            //被击退的方向
+            Vector3 delta = transform.position - coll.transform.position;  // 四个方向
+            if(Mathf.Abs(delta.x) >= Mathf.Abs(delta.y)) {    // 首先查看是水平还是垂直方向
+                delta.x = (delta.x > 0) ? 1:-1;
+                delta.y = 0;
+            } else { 
+                delta.x = 0;
+                delta.y = (delta.y > 0) ? 1:-1;
+            }
+
+            // delta实际是方向，根据方向和击退速度，赋予刚体速度
+            knockbackVel = delta*knockbackSpeed;
+            rigid.velocity = knockbackVel;
+
+            mode = eMode.knockback;
+            knockbackDone = Time.time + knockbackDuration;
+        }
+    }
+
+    void OnTriggerEnter(Collider colld) {
+        PickUp  pup = colld.GetComponent<PickUp>();
+        if(pup == null) return;
+
+        switch (pup.itemType) {
+            case PickUp.eType.health:
+                health = Mathf.Min(health +2, maxHealth);
+                break;
+            case PickUp.eType.key:
+                keyCount++;
+                break;
+            case PickUp.eType.grappler:
+                hasGrappler = true;
+                break;
+        }
+        Destroy(colld.gameObject);
+    }
+
+    public void ResetInRoom(int healthLoss = 0) {
+        transform.position = lastSafeLoc;
+        facing = lastSafeFacing;
+        health -= healthLoss;
+
+        invincible = true;
+        invincibleDone = Time.time + invincibleDuration;
     }
 
     public int GetFacing() {
