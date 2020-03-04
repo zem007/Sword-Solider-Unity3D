@@ -2,6 +2,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
+public class TileSwap {
+    public int tileNum;
+    public GameObject swapPrefab;
+    public GameObject guaranteedItemDrop;
+    public int overrideTileNum = -1;
+}
+
 //这个脚本是用来编译和储存所有sprites的
 //所有sprites从DelverTiles.psd中读取
 //而具体的每个sprite所属的位置是从DelverData中读取
@@ -19,9 +27,17 @@ public class TileCamera : MonoBehaviour
     public Texture2D mapTiles;
     public TextAsset mapCollisions;
     public Tile tilePrefab;
+    public int defaultTileNum;
+    public List<TileSwap> tileSwaps;
+
+    private Dictionary<int, TileSwap> tileSwapDict;
+    private Transform enemyAnchor, itemAnchor;
 
     void Awake() {
         COLLISIONS = Utils.RemoveLineEndings(mapCollisions.text);
+        PrepareTileSwapDict();
+        enemyAnchor = (new GameObject("Enemy Anchor")).transform;
+        itemAnchor = (new GameObject("Item Anchor")).transform;
         LoadMap();
     }
 
@@ -53,6 +69,7 @@ public class TileCamera : MonoBehaviour
                 } else {
                     MAP[i, j] = int.Parse(tileNums[i], hexNum);
                 }
+                CheckTileSwaps(i, j);
             }
         }
         print("Parsed " + SPRITES.Length + "sprites.");
@@ -70,10 +87,54 @@ public class TileCamera : MonoBehaviour
                 if(MAP[i,j] != 0) {
                     Tile ti = Instantiate<Tile>(tilePrefab);
                     ti.transform.SetParent(TILE_ANCHOR);
-                    ti.SetTile(i, j);
+                    // ti.SetTile(i, j);
+
+                    int tN = MAP[i, j];
+                    if(tileSwapDict.ContainsKey(tN)) {
+                        ti.SetTile(i, j, defaultTileNum);
+                    } else {
+                        ti.SetTile(i, j);
+                    }
+                    
                     TILES[i, j] = ti;
                 }
             }
+        }
+    }
+
+    void PrepareTileSwapDict() {
+        tileSwapDict = new Dictionary<int, TileSwap>();
+        foreach(TileSwap ts in tileSwaps) {
+            tileSwapDict.Add(ts.tileNum, ts);
+        }
+    }
+
+    //对于(i,j)坐标处的Tile，如果对应的原始Tile是tileSwapDict的key
+    //说明应该被新的Tile替换，Tile是Enemy或者Item，并初始化
+    void CheckTileSwaps(int i, int j) {
+        int tNum = GET_MAP(i,j);
+        if(!tileSwapDict.ContainsKey(tNum)) return;
+        TileSwap ts = tileSwapDict[tNum];
+        if(ts.swapPrefab != null) {
+            GameObject go = Instantiate(ts.swapPrefab);
+            Enemy e = go.GetComponent<Enemy>();
+            if(e != null) {
+                go.transform.SetParent(enemyAnchor);
+            } else {
+                go.transform.SetParent(itemAnchor);
+            }
+            go.transform.position = new Vector3(i,j,0);
+            if(ts.guaranteedItemDrop != null) {
+                if(e != null) {
+                e.guaranteedItemDrop = ts.guaranteedItemDrop;
+                }
+            }
+        }
+        //当前(i,j)位置的Tile被目标编号的Tile替换
+        if(ts.overrideTileNum == -1) {
+            SET_MAP(i, i, defaultTileNum);
+        } else {
+            SET_MAP(i, j, ts.overrideTileNum);
         }
     }
 
