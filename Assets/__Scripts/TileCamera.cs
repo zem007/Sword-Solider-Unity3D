@@ -72,8 +72,8 @@ public class TileCamera : MonoBehaviour
                 CheckTileSwaps(i, j);
             }
         }
-        print("Parsed " + SPRITES.Length + "sprites.");
-        print("Map size: " + W + "wide by " + H + "high");
+        // print("Parsed " + SPRITES.Length + "sprites.");
+        // print("Map size: " + W + "wide by " + H + "high");
 
         ShowMap();
     }

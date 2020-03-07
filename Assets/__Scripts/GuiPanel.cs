@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class GuiPanel : MonoBehaviour 
 {
@@ -11,10 +12,15 @@ public class GuiPanel : MonoBehaviour
     public Sprite healthHalf;
     public Sprite healthFull;
     
+    Text panelNameText;
     Text keyCountText;
     List<Image> healthImages;
 
     void Start() {
+        // GO GO GO~~
+        Transform panelName = transform.Find("Title");
+        panelNameText = panelName.GetComponent<Text>();
+        panelNameText.text = "Good Luck";
         // key count
         Transform trans = transform.Find("Key Count");    //此对象包含一个叫Key Count的Text组件
         keyCountText = trans.GetComponent<Text>();
@@ -35,6 +41,10 @@ public class GuiPanel : MonoBehaviour
         keyCountText.text = dray.numKeys.ToString();
         // show health
         int health = dray.health;   //调用dray的health属性get
+        if(health <= 0) {
+            panelNameText.text = "Game Over";
+            Invoke("RestartGame", 5);
+        }
         for(int i=0; i < healthImages.Count; i++) {
             if(health >= 2) {
                 healthImages[i].sprite = healthFull;
@@ -45,5 +55,9 @@ public class GuiPanel : MonoBehaviour
             }
             health -= 2;   //每两滴血显示一个整格
         }
+    }
+
+    void RestartGame() {
+        SceneManager.LoadScene("_Scene_Hat");
     }
 }

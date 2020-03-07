@@ -178,6 +178,9 @@ public class Dray : MonoBehaviour, IFacingMover, IKeyMaster
         if(dEf == null) return;    //如果碰撞到的对象没有DamageEffect组件，说明该对象不会产生影响
 
         health -= dEf.damage;
+        if(health <= 0) {    //如果角色血量为0，已死亡
+            gameObject.SetActive(false);
+        }
         invincible = true;
         invincibleDone = Time.time + invincibleDuration;
         
@@ -223,6 +226,9 @@ public class Dray : MonoBehaviour, IFacingMover, IKeyMaster
         transform.position = lastSafeLoc;
         facing = lastSafeFacing;
         health -= healthLoss;
+        if(health <= 0) {    //如果角色血量为0，已死亡
+            gameObject.SetActive(false);
+        }
 
         invincible = true;
         invincibleDone = Time.time + invincibleDuration;
