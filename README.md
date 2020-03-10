@@ -7,3 +7,7 @@ a 8-bit pixel style 2d game designed on Unity3D
 3. push "z" button to swing sword; push the direction keys to move your character;
 4. try to find all keys and open all doors, push "x" button to connet the wall when you pick a grapple
 5. have fun!
+
+## Screenshots
+![image](https://github.com/zem007/Sword-Solider-Unity3D/blob/master/imgs/sword_solider1.PNG)
+![image](https://github.com/zem007/Sword-Solider-Unity3D/blob/master/imgs/sword_solider2.PNG)
